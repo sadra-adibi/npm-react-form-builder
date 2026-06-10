@@ -1,7 +1,7 @@
 {
   "name": "npm-react-form-builder",
   "version": "1.0.0",
-  "description": "A React form builder library with class-style components for inputs, selectors, and image uploads.",
+  "description": "A drag-and-drop admin form builder React library",
   "type": "module",
   "main": "dist/npm-react-form-builder.umd.cjs",
   "module": "dist/npm-react-form-builder.js",
@@ -20,30 +20,15 @@
     "build": "vite build",
     "preview": "vite preview"
   },
-  "keywords": [
-    "react",
-    "form",
-    "form-builder",
-    "input",
-    "selector",
-    "image-upload",
-    "components",
-    "library"
-  ],
-  "author": "",
-  "license": "MIT",
   "peerDependencies": {
     "react": ">=17.0.0",
     "react-dom": ">=17.0.0"
   },
   "devDependencies": {
     "@types/node": "22.19.17",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "5.1.1",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "typescript": "5.9.3",
-    "vite": "7.3.2"
+    "@vitejs/plugin-react": "^5.1.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "vite": "^7.3.2"
   }
 }

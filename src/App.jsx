@@ -1,702 +1,1058 @@
-import { Component } from "react";
+import React from 'react';
+import './styles/form-builder.css';
 
-// Import library components and styles directly from source
-// (in a real consumer project this would be: from "npm-react-form-builder")
-import { FormBuilder, InputField, SelectorField, ImageUploadField } from "./index.js";
+// ─── Field type registry ─────────────────────────────────────────────────────
+const FIELD_TYPES = [
+  { type: 'text',        label: 'Text Input',       icon: '✏️' },
+  { type: 'dropdown',    label: 'Dropdown / Select', icon: '🔽' },
+  { type: 'image',       label: 'Image Upload',      icon: '🖼️' },
+  { type: 'checkbox',    label: 'Checkbox',          icon: '☑️' },
+  { type: 'radio',       label: 'Radio Button',      icon: '🔘' },
+  { type: 'date',        label: 'Date',              icon: '📅' },
+  { type: 'email',       label: 'Email',             icon: '📧' },
+  { type: 'file',        label: 'File Upload',       icon: '📎' },
+  { type: 'multiselect', label: 'Multi Select',      icon: '📋' },
+  { type: 'separator',   label: 'Separator',         icon: '➖' },
+  { type: 'textbox',     label: 'Text Box',          icon: '📝' },
+  { type: 'photobox',    label: 'Photo Box',         icon: '🏞️' },
+];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Demo App — showcases every feature of npm-react-form-builder
-// ─────────────────────────────────────────────────────────────────────────────
+function makeId() {
+  return Math.random().toString(36).slice(2, 9);
+}
 
-class App extends Component {
+function makeField(type) {
+  const base = { id: makeId(), type };
+  switch (type) {
+    case 'text':
+      return { ...base, label: 'Text Input', placeholder: 'Enter text...', required: false };
+    case 'dropdown':
+      return { ...base, label: 'Dropdown', options: ['Option 1', 'Option 2', 'Option 3'] };
+    case 'image':
+      return { ...base, label: 'Image Upload' };
+    case 'checkbox':
+      return { ...base, label: 'Check this box' };
+    case 'radio':
+      return { ...base, label: 'Choose one', options: ['Option A', 'Option B'] };
+    case 'date':
+      return { ...base, label: 'Select a date', required: false };
+    case 'email':
+      return { ...base, label: 'Email Address', placeholder: 'you@example.com', required: false };
+    case 'file':
+      return { ...base, label: 'Upload File', acceptedTypes: '*' };
+    case 'multiselect':
+      return { ...base, label: 'Multi Select', options: ['Alpha', 'Beta', 'Gamma'] };
+    case 'separator':
+      return { ...base };
+    case 'textbox':
+      return { ...base, content: 'This is a static text block. Click edit to change this text.' };
+    case 'photobox':
+      return { ...base, imageUrl: '' };
+    default:
+      return base;
+  }
+}
+
+// ─── Field Preview (read-only visual) ────────────────────────────────────────
+class FieldPreview extends React.Component {
+  render() {
+    const { field } = this.props;
+    switch (field.type) {
+      case 'text':
+        return (
+          <div>
+            <label className="fb-preview-label">
+              {field.label || 'Text Input'}
+              {field.required && <span className="fb-preview-required">*</span>}
+            </label>
+            <input className="fb-preview-input" type="text" placeholder={field.placeholder || 'Enter text...'} readOnly />
+          </div>
+        );
+      case 'email':
+        return (
+          <div>
+            <label className="fb-preview-label">
+              {field.label || 'Email'}
+              {field.required && <span className="fb-preview-required">*</span>}
+            </label>
+            <input className="fb-preview-input" type="email" placeholder={field.placeholder || 'you@example.com'} readOnly />
+          </div>
+        );
+      case 'dropdown':
+        return (
+          <div>
+            <label className="fb-preview-label">{field.label || 'Dropdown'}</label>
+            <select className="fb-preview-select" disabled>
+              <option>— Select —</option>
+              {(field.options || []).map((o, i) => <option key={i}>{o}</option>)}
+            </select>
+          </div>
+        );
+      case 'image':
+        return (
+          <div>
+            <label className="fb-preview-label">{field.label || 'Image Upload'}</label>
+            <div className="fb-preview-upload">
+              <span>🖼️</span>
+              <span>Click or drag an image here</span>
+            </div>
+          </div>
+        );
+      case 'checkbox':
+        return (
+          <div className="fb-preview-checkbox-row">
+            <input type="checkbox" className="fb-preview-checkbox" readOnly />
+            <span>{field.label || 'Checkbox'}</span>
+          </div>
+        );
+      case 'radio':
+        return (
+          <div>
+            <label className="fb-preview-label">{field.label || 'Radio'}</label>
+            <div className="fb-preview-radio-group">
+              {(field.options || ['Option A', 'Option B']).map((o, i) => (
+                <div className="fb-preview-radio-row" key={i}>
+                  <input type="radio" className="fb-preview-radio" readOnly />
+                  <span>{o}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'date':
+        return (
+          <div>
+            <label className="fb-preview-label">
+              {field.label || 'Date'}
+              {field.required && <span className="fb-preview-required">*</span>}
+            </label>
+            <input className="fb-preview-input" type="date" readOnly />
+          </div>
+        );
+      case 'file':
+        return (
+          <div>
+            <label className="fb-preview-label">{field.label || 'File Upload'}</label>
+            <div className="fb-preview-upload">
+              <span>📎</span>
+              <span>Click to upload {field.acceptedTypes && field.acceptedTypes !== '*' ? `(${field.acceptedTypes})` : ''}</span>
+            </div>
+          </div>
+        );
+      case 'multiselect':
+        return (
+          <div>
+            <label className="fb-preview-label">{field.label || 'Multi Select'}</label>
+            <div className="fb-multiselect-tags">
+              {(field.options || []).slice(0, 3).map((o, i) => (
+                <span className="fb-multiselect-tag" key={i}>{o}</span>
+              ))}
+              {(field.options || []).length > 3 && <span className="fb-multiselect-tag">+{(field.options || []).length - 3}</span>}
+            </div>
+          </div>
+        );
+      case 'separator':
+        return <hr className="fb-preview-separator" />;
+      case 'textbox':
+        return (
+          <p className="fb-preview-textbox">{field.content || 'Static text block — click Edit to change.'}</p>
+        );
+      case 'photobox':
+        return field.imageUrl ? (
+          <img src={field.imageUrl} alt="photo" className="fb-preview-photobox" />
+        ) : (
+          <div className="fb-preview-photobox-placeholder">
+            <span style={{ fontSize: '28px' }}>🏞️</span>
+            <span>No image URL set — click Edit to add one</span>
+          </div>
+        );
+      default:
+        return <div style={{ color: '#94a3b8', fontSize: '12px' }}>Unknown field: {field.type}</div>;
+    }
+  }
+}
+
+// ─── Inline Field Editor ──────────────────────────────────────────────────────
+class FieldEditor extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {
-      // FormBuilder submission result
-      submittedValues: null,
-      // Individual component demo values
-      inputValue: "",
-      selectorValue: "",
-      imageFile: null,
-      // Active tab in the demo
-      activeTab: "formbuilder",
-    };
-
-    this.handleFormSubmit  = this.handleFormSubmit.bind(this);
-    this.handleFormReset   = this.handleFormReset.bind(this);
-    this.handleTabChange   = this.handleTabChange.bind(this);
+    this.handleLabelChange = this.handleLabelChange.bind(this);
+    this.handlePlaceholderChange = this.handlePlaceholderChange.bind(this);
+    this.handleRequiredToggle = this.handleRequiredToggle.bind(this);
+    this.handleContentChange = this.handleContentChange.bind(this);
+    this.handleImageUrlChange = this.handleImageUrlChange.bind(this);
+    this.handleAcceptedTypesChange = this.handleAcceptedTypesChange.bind(this);
+    this.handleOptionChange = this.handleOptionChange.bind(this);
+    this.handleAddOption = this.handleAddOption.bind(this);
+    this.handleRemoveOption = this.handleRemoveOption.bind(this);
   }
 
-  handleFormSubmit(values) {
-    this.setState({ submittedValues: values });
+  handleLabelChange(e) {
+    this.props.onUpdate({ label: e.target.value });
+  }
+  handlePlaceholderChange(e) {
+    this.props.onUpdate({ placeholder: e.target.value });
+  }
+  handleRequiredToggle(e) {
+    this.props.onUpdate({ required: e.target.checked });
+  }
+  handleContentChange(e) {
+    this.props.onUpdate({ content: e.target.value });
+  }
+  handleImageUrlChange(e) {
+    this.props.onUpdate({ imageUrl: e.target.value });
+  }
+  handleAcceptedTypesChange(e) {
+    this.props.onUpdate({ acceptedTypes: e.target.value });
+  }
+  handleOptionChange(idx, val) {
+    const opts = [...(this.props.field.options || [])];
+    opts[idx] = val;
+    this.props.onUpdate({ options: opts });
+  }
+  handleAddOption() {
+    const opts = [...(this.props.field.options || []), 'New Option'];
+    this.props.onUpdate({ options: opts });
+  }
+  handleRemoveOption(idx) {
+    const opts = (this.props.field.options || []).filter((_, i) => i !== idx);
+    this.props.onUpdate({ options: opts });
   }
 
-  handleFormReset() {
-    this.setState({ submittedValues: null });
-  }
-
-  handleTabChange(tab) {
-    this.setState({ activeTab: tab });
+  renderOptionsEditor() {
+    const { field } = this.props;
+    return (
+      <div className="fb-form-group">
+        <label className="fb-form-label">Options</label>
+        <div className="fb-options-list">
+          {(field.options || []).map((opt, idx) => (
+            <div className="fb-option-row" key={idx}>
+              <input
+                className="fb-form-input"
+                type="text"
+                value={opt}
+                onChange={(e) => this.handleOptionChange(idx, e.target.value)}
+              />
+              <button
+                type="button"
+                className="fb-option-remove"
+                onClick={() => this.handleRemoveOption(idx)}
+                title="Remove option"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="fb-add-option-btn" onClick={this.handleAddOption}>
+          + Add Option
+        </button>
+      </div>
+    );
   }
 
   render() {
-    const { submittedValues, activeTab } = this.state;
+    const { field } = this.props;
 
-    // ── FormBuilder field definitions ──────────────────────────────────────
-    const fields = [
-      {
-        type: "input",
-        name: "fullName",
-        label: "Full Name",
-        placeholder: "e.g. Jane Doe",
-        required: true,
-        hint: "Enter your first and last name.",
-      },
-      {
-        type: "input",
-        name: "email",
-        label: "Email Address",
-        placeholder: "you@example.com",
-        inputType: "email",
-        required: true,
-      },
-      {
-        type: "input",
-        name: "bio",
-        label: "Short Bio",
-        placeholder: "Tell us a little about yourself…",
-        inputType: "textarea",
-        hint: "Max 200 characters.",
-      },
-      {
-        type: "selector",
-        name: "country",
-        label: "Country",
-        placeholder: "Select your country…",
-        required: true,
-        options: [
-          { label: "🇺🇸 United States", value: "us" },
-          { label: "🇬🇧 United Kingdom", value: "gb" },
-          { label: "🇩🇪 Germany",        value: "de" },
-          { label: "🇫🇷 France",         value: "fr" },
-          { label: "🇯🇵 Japan",          value: "jp" },
-          { label: "🇧🇷 Brazil",         value: "br" },
-          { label: "🇦🇺 Australia",      value: "au" },
-          { label: "🇨🇦 Canada",         value: "ca" },
-        ],
-        hint: "We'll use this for regional settings.",
-      },
-      {
-        type: "selector",
-        name: "role",
-        label: "Role",
-        placeholder: "Pick your role…",
-        options: ["Frontend Developer", "Backend Developer", "Designer", "Product Manager", "DevOps Engineer", "Other"],
-      },
-      {
-        type: "image",
-        name: "avatar",
-        label: "Profile Picture",
-        hint: "Accepted: JPG, PNG, GIF, WEBP. Max 5 MB.",
-        maxSizeMB: 5,
-      },
-    ];
-
-    const tabs = [
-      { key: "formbuilder", label: "FormBuilder" },
-      { key: "inputfield",  label: "InputField" },
-      { key: "selector",    label: "SelectorField" },
-      { key: "image",       label: "ImageUploadField" },
-    ];
+    if (field.type === 'separator') {
+      return (
+        <div style={{ color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>
+          No properties to edit for a separator.
+        </div>
+      );
+    }
 
     return (
-      <div style={styles.page}>
-        {/* ── Page Header ── */}
-        <header style={styles.header}>
-          <div style={styles.headerInner}>
-            <div style={styles.headerBadge}>
-              <span style={styles.npm}>npm</span> package
-            </div>
-            <h1 style={styles.headerTitle}>npm-react-form-builder</h1>
-            <p style={styles.headerSubtitle}>
-              A React form builder library with class-based components.
-              Drop in ready-to-use <code style={styles.code}>InputField</code>,{" "}
-              <code style={styles.code}>SelectorField</code>, and{" "}
-              <code style={styles.code}>ImageUploadField</code> — or let{" "}
-              <code style={styles.code}>FormBuilder</code> orchestrate them all
-              from a single config array.
-            </p>
-            <div style={styles.installBox}>
-              <span style={styles.installCmd}>
-                npm install npm-react-form-builder
-              </span>
+      <div>
+        {/* Label */}
+        {field.type !== 'separator' && field.type !== 'textbox' && field.type !== 'photobox' && (
+          <div className="fb-form-group">
+            <label className="fb-form-label">Label</label>
+            <input
+              className="fb-form-input"
+              type="text"
+              value={field.label || ''}
+              onChange={this.handleLabelChange}
+            />
+          </div>
+        )}
+
+        {/* Placeholder */}
+        {(field.type === 'text' || field.type === 'email') && (
+          <div className="fb-form-group">
+            <label className="fb-form-label">Placeholder</label>
+            <input
+              className="fb-form-input"
+              type="text"
+              value={field.placeholder || ''}
+              onChange={this.handlePlaceholderChange}
+            />
+          </div>
+        )}
+
+        {/* Required toggle */}
+        {(field.type === 'text' || field.type === 'email' || field.type === 'date') && (
+          <div className="fb-form-group">
+            <div className="fb-toggle-row">
+              <label className="fb-toggle">
+                <input
+                  type="checkbox"
+                  checked={field.required || false}
+                  onChange={this.handleRequiredToggle}
+                />
+                <span className="fb-toggle-slider" />
+              </label>
+              <span className="fb-toggle-label">Required field</span>
             </div>
           </div>
-        </header>
+        )}
 
-        <main style={styles.main}>
-          {/* ── Tabs ── */}
-          <div style={styles.tabBar}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                style={{
-                  ...styles.tab,
-                  ...(activeTab === tab.key ? styles.tabActive : {}),
-                }}
-                onClick={() => this.handleTabChange(tab.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {/* Options list */}
+        {(field.type === 'dropdown' || field.type === 'radio' || field.type === 'multiselect') && (
+          this.renderOptionsEditor()
+        )}
+
+        {/* Accepted file types */}
+        {field.type === 'file' && (
+          <div className="fb-form-group">
+            <label className="fb-form-label">Accepted File Types</label>
+            <input
+              className="fb-form-input"
+              type="text"
+              value={field.acceptedTypes || '*'}
+              placeholder=".pdf,.doc,.jpg or *"
+              onChange={this.handleAcceptedTypesChange}
+            />
           </div>
+        )}
 
-          {/* ══════════════════════════════════════════════
-              TAB 1 — FormBuilder demo
-          ══════════════════════════════════════════════ */}
-          {activeTab === "formbuilder" && (
-            <div style={styles.demoGrid}>
-              {/* Left: the form itself */}
-              <div style={styles.demoPanel}>
-                <SectionLabel
-                  title="FormBuilder Component"
-                  description="Declaratively compose any form from a simple fields[] config array. FormBuilder manages state internally and calls onSubmit with all values."
-                />
-                <FormBuilder
-                  title="Create Your Profile"
-                  description="Fill in the form below — all fields are managed by FormBuilder."
-                  fields={fields}
-                  onSubmit={this.handleFormSubmit}
-                  onReset={this.handleFormReset}
-                  submitLabel="Save Profile"
-                  resetLabel="Clear"
-                />
-              </div>
+        {/* Text box content */}
+        {field.type === 'textbox' && (
+          <div className="fb-form-group">
+            <label className="fb-form-label">Text Content</label>
+            <textarea
+              className="fb-form-textarea"
+              value={field.content || ''}
+              onChange={this.handleContentChange}
+              placeholder="Enter the static text to display..."
+            />
+          </div>
+        )}
 
-              {/* Right: submission output */}
-              <div style={styles.demoPanel}>
-                <SectionLabel
-                  title="onSubmit Output"
-                  description="The values object passed to your onSubmit callback after clicking 'Save Profile'."
-                />
-                <div style={styles.outputBox}>
-                  {submittedValues ? (
-                    <>
-                      <div style={styles.outputBadge}>✅ Form submitted</div>
-                      <pre style={styles.pre}>
-                        {JSON.stringify(
-                          Object.fromEntries(
-                            Object.entries(submittedValues).map(([k, v]) => [
-                              k,
-                              v instanceof File
-                                ? `[File] ${v.name} (${(v.size / 1024).toFixed(1)} KB)`
-                                : v,
-                            ])
-                          ),
-                          null,
-                          2
-                        )}
-                      </pre>
-                    </>
-                  ) : (
-                    <div style={styles.outputEmpty}>
-                      <span style={styles.outputEmptyIcon}>📋</span>
-                      <p style={styles.outputEmptyText}>
-                        Fill in the form and click <strong>Save Profile</strong> to see the output here.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Usage snippet */}
-                <SectionLabel
-                  title="Usage Snippet"
-                  description="Paste this into your project to get started instantly."
-                />
-                <div style={styles.codeBlock}>
-                  <pre style={styles.codeBlockPre}>{`import { FormBuilder } from "npm-react-form-builder";
-import "npm-react-form-builder/style.css";
-
-const fields = [
-  { type: "input",    name: "name",    label: "Name" },
-  { type: "selector", name: "role",    label: "Role",
-    options: ["Dev", "Designer"] },
-  { type: "image",    name: "avatar",  label: "Avatar" },
-];
-
-<FormBuilder
-  title="My Form"
-  fields={fields}
-  onSubmit={(values) => console.log(values)}
-/>`}</pre>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ══════════════════════════════════════════════
-              TAB 2 — InputField demo
-          ══════════════════════════════════════════════ */}
-          {activeTab === "inputfield" && (
-            <div style={styles.demoGrid}>
-              <div style={styles.demoPanel}>
-                <SectionLabel
-                  title="InputField Component"
-                  description="A text input that works in both controlled and uncontrolled mode. Supports all HTML input types plus a multiline textarea variant."
-                />
-                <InputField
-                  name="demo_text"
-                  label="Plain Text Input"
-                  placeholder="Type something…"
-                  hint="This is a standard text input."
-                  onChange={(val) => this.setState({ inputValue: val })}
-                />
-                <InputField
-                  name="demo_email"
-                  label="Email Input"
-                  placeholder="you@example.com"
-                  inputType="email"
-                  required
-                />
-                <InputField
-                  name="demo_number"
-                  label="Number Input"
-                  placeholder="42"
-                  type="number"
-                />
-                <InputField
-                  name="demo_textarea"
-                  label="Textarea (multiline)"
-                  placeholder="Write a longer text here…"
-                  type="textarea"
-                  hint='Pass type="textarea" to render a resizable multiline input.'
-                />
-                <InputField
-                  name="demo_disabled"
-                  label="Disabled Input"
-                  placeholder="Can't edit this"
-                  value="Read-only value"
-                  disabled
-                />
-              </div>
-              <div style={styles.demoPanel}>
-                <SectionLabel title="Live Value" description="Updates on every keystroke." />
-                <div style={styles.outputBox}>
-                  <div style={styles.outputBadge}>Current value</div>
-                  <pre style={styles.pre}>"{this.state.inputValue}"</pre>
-                </div>
-                <SectionLabel title="Component API" />
-                <PropTable rows={[
-                  ["label",       "string",   "–",       "Label text above the input"],
-                  ["placeholder", "string",   "\"\"",    "Placeholder inside the input"],
-                  ["type",        "string",   "\"text\"","HTML type or \"textarea\""],
-                  ["value",       "string",   "–",       "Controlled value"],
-                  ["name",        "string",   "–",       "Field identifier"],
-                  ["onChange",    "function", "–",       "(value, name) => void"],
-                  ["required",    "boolean",  "false",   "Shows asterisk, sets required"],
-                  ["disabled",    "boolean",  "false",   "Disables the input"],
-                  ["hint",        "string",   "–",       "Helper text below field"],
-                ]} />
-              </div>
-            </div>
-          )}
-
-          {/* ══════════════════════════════════════════════
-              TAB 3 — SelectorField demo
-          ══════════════════════════════════════════════ */}
-          {activeTab === "selector" && (
-            <div style={styles.demoGrid}>
-              <div style={styles.demoPanel}>
-                <SectionLabel
-                  title="SelectorField Component"
-                  description="A styled dropdown that accepts options as plain strings or { label, value } objects. Works in controlled and uncontrolled mode."
-                />
-                <SelectorField
-                  name="demo_strings"
-                  label="Simple string options"
-                  options={["Apple", "Banana", "Cherry", "Date", "Elderberry"]}
-                  hint="Options can be plain strings."
-                  onChange={(val) => this.setState({ selectorValue: val })}
-                />
-                <SelectorField
-                  name="demo_objects"
-                  label="Object options { label, value }"
-                  options={[
-                    { label: "🇺🇸 United States", value: "us" },
-                    { label: "🇬🇧 United Kingdom", value: "gb" },
-                    { label: "🇩🇪 Germany",        value: "de" },
-                    { label: "🇫🇷 France",         value: "fr" },
-                  ]}
-                  placeholder="Select a country…"
-                  hint='Options support { label: "Display", value: "code" } shape.'
-                />
-                <SelectorField
-                  name="demo_required"
-                  label="Required selector"
-                  options={["Option A", "Option B", "Option C"]}
-                  required
-                />
-                <SelectorField
-                  name="demo_disabled"
-                  label="Disabled selector"
-                  options={["Locked"]}
-                  value="Locked"
-                  disabled
-                />
-              </div>
-              <div style={styles.demoPanel}>
-                <SectionLabel title="Live Value" description="Changes on selection." />
-                <div style={styles.outputBox}>
-                  <div style={styles.outputBadge}>Selected value</div>
-                  <pre style={styles.pre}>"{this.state.selectorValue}"</pre>
-                </div>
-                <SectionLabel title="Component API" />
-                <PropTable rows={[
-                  ["label",       "string",   "–",                "Label text"],
-                  ["options",     "Array",    "[]",               "string[] or {label,value}[]"],
-                  ["value",       "string",   "–",                "Controlled value"],
-                  ["placeholder", "string",   "\"Select…\"",      "Empty option label"],
-                  ["name",        "string",   "–",                "Field identifier"],
-                  ["onChange",    "function", "–",                "(value, name) => void"],
-                  ["required",    "boolean",  "false",            "Marks field as required"],
-                  ["disabled",    "boolean",  "false",            "Disables the select"],
-                  ["hint",        "string",   "–",                "Helper text"],
-                ]} />
-              </div>
-            </div>
-          )}
-
-          {/* ══════════════════════════════════════════════
-              TAB 4 — ImageUploadField demo
-          ══════════════════════════════════════════════ */}
-          {activeTab === "image" && (
-            <div style={styles.demoGrid}>
-              <div style={styles.demoPanel}>
-                <SectionLabel
-                  title="ImageUploadField Component"
-                  description="Drag-and-drop image upload with live preview, validation, and Change / Remove controls."
-                />
-                <ImageUploadField
-                  name="demo_image"
-                  label="Upload an Image"
-                  hint="Drag & drop or click to browse. Accepts JPG, PNG, GIF, WEBP. Max 5 MB."
-                  maxSizeMB={5}
-                  onChange={(file) => this.setState({ imageFile: file })}
-                />
-              </div>
-              <div style={styles.demoPanel}>
-                <SectionLabel title="File Callback Value" description="The File object passed to onChange." />
-                <div style={styles.outputBox}>
-                  {this.state.imageFile ? (
-                    <>
-                      <div style={styles.outputBadge}>📎 File selected</div>
-                      <pre style={styles.pre}>{JSON.stringify({
-                        name: this.state.imageFile.name,
-                        type: this.state.imageFile.type,
-                        size: `${(this.state.imageFile.size / 1024).toFixed(1)} KB`,
-                        lastModified: new Date(this.state.imageFile.lastModified).toLocaleString(),
-                      }, null, 2)}</pre>
-                    </>
-                  ) : (
-                    <div style={styles.outputEmpty}>
-                      <span style={styles.outputEmptyIcon}>🖼️</span>
-                      <p style={styles.outputEmptyText}>No image selected yet.</p>
-                    </div>
-                  )}
-                </div>
-                <SectionLabel title="Component API" />
-                <PropTable rows={[
-                  ["label",     "string",   "–",      "Label text"],
-                  ["name",      "string",   "–",      "Field identifier"],
-                  ["onChange",  "function", "–",      "(file: File|null, name) => void"],
-                  ["accept",    "string[]", "img/*",  "Accepted MIME types array"],
-                  ["maxSizeMB", "number",  "10",      "Max file size in MB"],
-                  ["required",  "boolean", "false",   "Marks field as required"],
-                  ["hint",      "string",  "–",       "Helper text below field"],
-                ]} />
-              </div>
-            </div>
-          )}
-        </main>
-
-        {/* ── Footer ── */}
-        <footer style={styles.footer}>
-          <p style={styles.footerText}>
-            <strong>npm-react-form-builder</strong> — MIT License · Built with React class components · Bundled with Vite
-          </p>
-        </footer>
+        {/* Photo box URL */}
+        {field.type === 'photobox' && (
+          <div className="fb-form-group">
+            <label className="fb-form-label">Image URL</label>
+            <input
+              className="fb-form-input"
+              type="text"
+              value={field.imageUrl || ''}
+              placeholder="https://example.com/photo.jpg"
+              onChange={this.handleImageUrlChange}
+            />
+          </div>
+        )}
       </div>
     );
   }
 }
 
-// ── Small helper components ────────────────────────────────────────────────
+// ─── Field Card ───────────────────────────────────────────────────────────────
+class FieldCard extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { editing: false, dragOverPos: null };
+    this.toggleEdit = this.toggleEdit.bind(this);
+    this.handleDragStart = this.handleDragStart.bind(this);
+    this.handleDragEnd = this.handleDragEnd.bind(this);
+    this.handleDragOver = this.handleDragOver.bind(this);
+    this.handleDragLeave = this.handleDragLeave.bind(this);
+    this.handleDrop = this.handleDrop.bind(this);
+  }
 
-function SectionLabel({ title, description }) {
-  return (
-    <div style={styles.sectionLabel}>
-      {title && <h3 style={styles.sectionTitle}>{title}</h3>}
-      {description && <p style={styles.sectionDesc}>{description}</p>}
-    </div>
-  );
+  toggleEdit() {
+    this.setState((s) => ({ editing: !s.editing }));
+  }
+
+  handleDragStart(e) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'canvas', id: this.props.field.id }));
+    this.props.onDragStart(this.props.field.id);
+  }
+
+  handleDragEnd() {
+    this.props.onDragEnd();
+    this.setState({ dragOverPos: null });
+  }
+
+  handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    this.setState({ dragOverPos: e.clientY < mid ? 'top' : 'bottom' });
+  }
+
+  handleDragLeave() {
+    this.setState({ dragOverPos: null });
+  }
+
+  handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const pos = this.state.dragOverPos;
+    this.setState({ dragOverPos: null });
+    const raw = e.dataTransfer.getData('text/plain');
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      this.props.onDrop(data, this.props.field.id, pos);
+    } catch (_) {}
+  }
+
+  render() {
+    const { field, isDragging, onUpdate, onDelete } = this.props;
+    const { editing, dragOverPos } = this.state;
+    const typeInfo = FIELD_TYPES.find((t) => t.type === field.type) || {};
+
+    let cardClass = 'fb-field-card';
+    if (isDragging) cardClass += ' drag-source';
+    if (dragOverPos === 'top') cardClass += ' drag-over-top';
+    if (dragOverPos === 'bottom') cardClass += ' drag-over-bottom';
+    if (editing) cardClass += ' editing';
+
+    return (
+      <div
+        className={cardClass}
+        onDragOver={this.handleDragOver}
+        onDragLeave={this.handleDragLeave}
+        onDrop={this.handleDrop}
+      >
+        {/* Card header */}
+        <div className="fb-card-header">
+          <span
+            className="fb-card-drag-handle"
+            draggable
+            onDragStart={this.handleDragStart}
+            onDragEnd={this.handleDragEnd}
+            title="Drag to reorder"
+          >
+            ⠿⠿
+          </span>
+          <span className="fb-card-type-badge">{typeInfo.label || field.type}</span>
+          <span className="fb-card-title">
+            {field.label || field.content || (field.type === 'separator' ? '— separator —' : 'Untitled')}
+          </span>
+          <div className="fb-card-actions">
+            {field.type !== 'separator' && (
+              <button
+                type="button"
+                className={`fb-icon-btn ${editing ? 'edit-active' : ''}`}
+                onClick={this.toggleEdit}
+                title={editing ? 'Close editor' : 'Edit field'}
+              >
+                ✏️
+              </button>
+            )}
+            <button
+              type="button"
+              className="fb-icon-btn danger"
+              onClick={() => onDelete(field.id)}
+              title="Remove field"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="fb-card-preview">
+          <FieldPreview field={field} />
+        </div>
+
+        {/* Inline editor */}
+        {editing && (
+          <div className="fb-card-edit">
+            <FieldEditor field={field} onUpdate={(changes) => onUpdate(field.id, changes)} />
+          </div>
+        )}
+      </div>
+    );
+  }
 }
 
-function PropTable({ rows }) {
-  return (
-    <div style={styles.propTableWrap}>
-      <table style={styles.propTable}>
-        <thead>
-          <tr>
-            {["Prop", "Type", "Default", "Description"].map((h) => (
-              <th key={h} style={styles.th}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(([prop, type, def, desc], i) => (
-            <tr key={prop} style={{ background: i % 2 === 0 ? "#fff" : "#f9fafb" }}>
-              <td style={{ ...styles.td, fontFamily: "monospace", color: "#4f46e5", fontWeight: 600 }}>{prop}</td>
-              <td style={{ ...styles.td, fontFamily: "monospace", color: "#059669" }}>{type}</td>
-              <td style={{ ...styles.td, fontFamily: "monospace", color: "#6b7280" }}>{def}</td>
-              <td style={styles.td}>{desc}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+// ─── JSON Modal ───────────────────────────────────────────────────────────────
+class JsonModal extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { copied: false };
+    this.handleCopy = this.handleCopy.bind(this);
+  }
+
+  handleCopy() {
+    navigator.clipboard.writeText(this.props.json).then(() => {
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2000);
+    });
+  }
+
+  render() {
+    const { json, onClose } = this.props;
+    const { copied } = this.state;
+    return (
+      <div className="fb-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="fb-modal">
+          <div className="fb-modal-header">
+            <div>
+              <div className="fb-modal-title">📋 Form JSON</div>
+              <div className="fb-modal-subtitle">Copy and store this JSON to reconstruct the form later</div>
+            </div>
+            <button type="button" className="fb-icon-btn" onClick={onClose} title="Close">✕</button>
+          </div>
+          <div className="fb-modal-body">
+            <pre className="fb-code-block">{json}</pre>
+          </div>
+          <div className="fb-modal-footer">
+            {copied && <span className="fb-copy-success">✅ Copied!</span>}
+            <button type="button" className="fb-btn fb-btn-secondary" onClick={onClose}>Close</button>
+            <button type="button" className="fb-btn fb-btn-primary" onClick={this.handleCopy}>
+              📋 Copy to Clipboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
 
-// ── Inline styles for the demo shell ──────────────────────────────────────
+// ─── HTML Modal ───────────────────────────────────────────────────────────────
+class HtmlModal extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { copied: false };
+    this.handleCopy = this.handleCopy.bind(this);
+  }
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #f0f0ff 0%, #fafafa 50%, #f0fff4 100%)",
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    color: "#111827",
-  },
-  header: {
-    background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-    color: "white",
-    padding: "48px 24px 40px",
-  },
-  headerInner: {
-    maxWidth: 960,
-    margin: "0 auto",
-  },
-  headerBadge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    background: "rgba(255,255,255,0.15)",
-    border: "1px solid rgba(255,255,255,0.3)",
-    borderRadius: 999,
-    padding: "4px 12px",
-    fontSize: "0.78rem",
-    fontWeight: 600,
-    letterSpacing: "0.05em",
-    textTransform: "uppercase",
-    marginBottom: 16,
-  },
-  npm: {
-    background: "#cc3534",
-    color: "white",
-    borderRadius: 4,
-    padding: "1px 6px",
-    fontSize: "0.75rem",
-    fontWeight: 700,
-    letterSpacing: "0.02em",
-  },
-  headerTitle: {
-    fontSize: "clamp(1.6rem, 4vw, 2.5rem)",
-    fontWeight: 800,
-    margin: "0 0 12px",
-    letterSpacing: "-0.02em",
-  },
-  headerSubtitle: {
-    fontSize: "1rem",
-    opacity: 0.88,
-    margin: "0 0 24px",
-    lineHeight: 1.6,
-    maxWidth: 680,
-  },
-  code: {
-    background: "rgba(255,255,255,0.2)",
-    borderRadius: 4,
-    padding: "1px 6px",
-    fontFamily: "monospace",
-    fontSize: "0.9em",
-  },
-  installBox: {
-    display: "inline-block",
-    background: "rgba(0,0,0,0.25)",
-    border: "1px solid rgba(255,255,255,0.25)",
-    borderRadius: 8,
-    padding: "10px 18px",
-  },
-  installCmd: {
-    fontFamily: "monospace",
-    fontSize: "0.95rem",
-    letterSpacing: "0.01em",
-  },
-  main: {
-    maxWidth: 1100,
-    margin: "0 auto",
-    padding: "32px 24px 48px",
-  },
-  tabBar: {
-    display: "flex",
-    gap: 4,
-    marginBottom: 28,
-    background: "white",
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-    padding: 4,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-    flexWrap: "wrap",
-  },
-  tab: {
-    flex: 1,
-    minWidth: 120,
-    padding: "8px 16px",
-    fontSize: "0.875rem",
-    fontWeight: 500,
-    border: "none",
-    borderRadius: 7,
-    cursor: "pointer",
-    background: "transparent",
-    color: "#6b7280",
-    transition: "all 150ms ease",
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-  tabActive: {
-    background: "#4f46e5",
-    color: "white",
-    fontWeight: 600,
-    boxShadow: "0 1px 4px rgba(79,70,229,0.35)",
-  },
-  demoGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-    gap: 24,
-    alignItems: "start",
-  },
-  demoPanel: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-  },
-  sectionLabel: {
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    fontSize: "1rem",
-    fontWeight: 700,
-    color: "#111827",
-    margin: "0 0 4px",
-  },
-  sectionDesc: {
-    fontSize: "0.84rem",
-    color: "#6b7280",
-    margin: 0,
-    lineHeight: 1.55,
-  },
-  outputBox: {
-    background: "#1e1e2e",
-    borderRadius: 10,
-    padding: 16,
-    minHeight: 120,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
-  outputBadge: {
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    color: "#a3e635",
-    letterSpacing: "0.05em",
-    textTransform: "uppercase",
-  },
-  pre: {
-    margin: 0,
-    fontSize: "0.82rem",
-    fontFamily: "monospace",
-    color: "#c9d1d9",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-all",
-    lineHeight: 1.6,
-  },
-  outputEmpty: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: "16px 0",
-  },
-  outputEmptyIcon: {
-    fontSize: "2rem",
-  },
-  outputEmptyText: {
-    margin: 0,
-    fontSize: "0.83rem",
-    color: "#6b7280",
-    textAlign: "center",
-  },
-  codeBlock: {
-    background: "#1e1e2e",
-    borderRadius: 10,
-    padding: "16px",
-    overflow: "auto",
-  },
-  codeBlockPre: {
-    margin: 0,
-    fontSize: "0.8rem",
-    fontFamily: "monospace",
-    color: "#c9d1d9",
-    whiteSpace: "pre",
-    lineHeight: 1.65,
-  },
-  propTableWrap: {
-    overflowX: "auto",
-    borderRadius: 8,
-    border: "1px solid #e5e7eb",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-  },
-  propTable: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: "0.8rem",
-  },
-  th: {
-    padding: "8px 12px",
-    textAlign: "left",
-    fontWeight: 600,
-    color: "#374151",
-    background: "#f3f4f6",
-    borderBottom: "1px solid #e5e7eb",
-    whiteSpace: "nowrap",
-  },
-  td: {
-    padding: "7px 12px",
-    color: "#374151",
-    borderBottom: "1px solid #e5e7eb",
-    verticalAlign: "top",
-    lineHeight: 1.5,
-  },
-  footer: {
-    borderTop: "1px solid #e5e7eb",
-    padding: "20px 24px",
-    textAlign: "center",
-    background: "white",
-  },
-  footerText: {
-    margin: 0,
-    fontSize: "0.82rem",
-    color: "#9ca3af",
-  },
-};
+  handleCopy() {
+    navigator.clipboard.writeText(this.props.html).then(() => {
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2000);
+    });
+  }
+
+  render() {
+    const { html, onClose } = this.props;
+    const { copied } = this.state;
+    return (
+      <div className="fb-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="fb-modal">
+          <div className="fb-modal-header">
+            <div>
+              <div className="fb-modal-title">🌐 Published HTML</div>
+              <div className="fb-modal-subtitle">Embed this self-contained snippet in any website</div>
+            </div>
+            <button type="button" className="fb-icon-btn" onClick={onClose} title="Close">✕</button>
+          </div>
+          <div className="fb-modal-body">
+            <pre className="fb-code-block">{html}</pre>
+          </div>
+          <div className="fb-modal-footer">
+            {copied && <span className="fb-copy-success">✅ Copied!</span>}
+            <button type="button" className="fb-btn fb-btn-secondary" onClick={onClose}>Close</button>
+            <button type="button" className="fb-btn fb-btn-primary" onClick={this.handleCopy}>
+              📋 Copy to Clipboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+class App extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      formTitle: '',
+      formDescription: '',
+      formType: 'contact',
+      fields: [],
+      draggingPanelType: null,  // type being dragged from panel
+      draggingCardId: null,     // id being dragged from canvas
+      canvasDragOver: false,
+      jsonModal: null,
+      htmlModal: null,
+    };
+
+    this.handlePanelDragStart = this.handlePanelDragStart.bind(this);
+    this.handlePanelDragEnd = this.handlePanelDragEnd.bind(this);
+    this.handleCanvasDragOver = this.handleCanvasDragOver.bind(this);
+    this.handleCanvasDragLeave = this.handleCanvasDragLeave.bind(this);
+    this.handleCanvasDrop = this.handleCanvasDrop.bind(this);
+    this.handleCardDragStart = this.handleCardDragStart.bind(this);
+    this.handleCardDragEnd = this.handleCardDragEnd.bind(this);
+    this.handleCardDrop = this.handleCardDrop.bind(this);
+    this.handleUpdateField = this.handleUpdateField.bind(this);
+    this.handleDeleteField = this.handleDeleteField.bind(this);
+    this.handleSaveJson = this.handleSaveJson.bind(this);
+    this.handlePublishHtml = this.handlePublishHtml.bind(this);
+    this.closeModal = this.closeModal.bind(this);
+  }
+
+  // ── Panel drag ──
+  handlePanelDragStart(e, type) {
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'panel', type }));
+    this.setState({ draggingPanelType: type });
+  }
+
+  handlePanelDragEnd() {
+    this.setState({ draggingPanelType: null });
+  }
+
+  // ── Canvas drop zone ──
+  handleCanvasDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    this.setState({ canvasDragOver: true });
+  }
+
+  handleCanvasDragLeave(e) {
+    // Only fire if leaving the drop-area itself (not a child)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      this.setState({ canvasDragOver: false });
+    }
+  }
+
+  handleCanvasDrop(e) {
+    e.preventDefault();
+    this.setState({ canvasDragOver: false });
+    const raw = e.dataTransfer.getData('text/plain');
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (data.source === 'panel') {
+        this.setState((s) => ({ fields: [...s.fields, makeField(data.type)] }));
+      }
+      // canvas-to-canvas handled by card drop handlers
+    } catch (_) {}
+  }
+
+  // ── Card drag (reorder) ──
+  handleCardDragStart(id) {
+    this.setState({ draggingCardId: id });
+  }
+
+  handleCardDragEnd() {
+    this.setState({ draggingCardId: null });
+  }
+
+  handleCardDrop(data, targetId, position) {
+    if (data.source === 'panel') {
+      // Dropped from panel onto a card — insert relative to target
+      const newField = makeField(data.type);
+      this.setState((s) => {
+        const idx = s.fields.findIndex((f) => f.id === targetId);
+        if (idx === -1) return { fields: [...s.fields, newField] };
+        const list = [...s.fields];
+        list.splice(position === 'top' ? idx : idx + 1, 0, newField);
+        return { fields: list };
+      });
+    } else if (data.source === 'canvas') {
+      // Reorder
+      const sourceId = data.id;
+      if (sourceId === targetId) return;
+      this.setState((s) => {
+        const list = s.fields.filter((f) => f.id !== sourceId);
+        const moved = s.fields.find((f) => f.id === sourceId);
+        if (!moved) return {};
+        const targetIdx = list.findIndex((f) => f.id === targetId);
+        if (targetIdx === -1) return { fields: [...list, moved] };
+        list.splice(position === 'top' ? targetIdx : targetIdx + 1, 0, moved);
+        return { fields: list };
+      });
+    }
+  }
+
+  // ── Field update / delete ──
+  handleUpdateField(id, changes) {
+    this.setState((s) => ({
+      fields: s.fields.map((f) => (f.id === id ? { ...f, ...changes } : f)),
+    }));
+  }
+
+  handleDeleteField(id) {
+    this.setState((s) => ({ fields: s.fields.filter((f) => f.id !== id) }));
+  }
+
+  // ── JSON export ──
+  handleSaveJson() {
+    const { fields, formTitle, formDescription, formType } = this.state;
+    const output = fields.map(({ id, ...rest }) => rest); // omit internal id
+    const payload = {
+      title: formTitle,
+      description: formDescription,
+      formType,
+      fields: output,
+    };
+    this.setState({ jsonModal: JSON.stringify(payload, null, 2) });
+  }
+
+  // ── HTML export ──
+  handlePublishHtml() {
+    const { fields, formTitle, formDescription } = this.state;
+
+    const renderFieldHtml = (field) => {
+      switch (field.type) {
+        case 'text':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'Text Input'}${field.required ? ' <span class="req">*</span>' : ''}</label>
+      <input type="text" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''} />
+    </div>`;
+        case 'email':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'Email'}${field.required ? ' <span class="req">*</span>' : ''}</label>
+      <input type="email" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''} />
+    </div>`;
+        case 'dropdown':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'Dropdown'}</label>
+      <select>
+        <option value="">— Select —</option>
+        ${(field.options || []).map((o) => `<option value="${o}">${o}</option>`).join('\n        ')}
+      </select>
+    </div>`;
+        case 'checkbox':
+          return `
+    <div class="field-group check-group">
+      <label><input type="checkbox" /> ${field.label || 'Checkbox'}</label>
+    </div>`;
+        case 'radio':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'Radio'}</label>
+      ${(field.options || []).map((o) => `<label class="radio-opt"><input type="radio" name="field_${field.type}" value="${o}" /> ${o}</label>`).join('\n      ')}
+    </div>`;
+        case 'date':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'Date'}${field.required ? ' <span class="req">*</span>' : ''}</label>
+      <input type="date" ${field.required ? 'required' : ''} />
+    </div>`;
+        case 'file':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'File Upload'}</label>
+      <input type="file" accept="${field.acceptedTypes || '*'}" />
+    </div>`;
+        case 'multiselect':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'Multi Select'}</label>
+      <select multiple size="4">
+        ${(field.options || []).map((o) => `<option value="${o}">${o}</option>`).join('\n        ')}
+      </select>
+    </div>`;
+        case 'separator':
+          return `\n    <hr style="border:none;border-top:2px solid #e2e8f0;margin:12px 0;" />`;
+        case 'textbox':
+          return `\n    <p class="textbox">${field.content || ''}</p>`;
+        case 'photobox':
+          return field.imageUrl
+            ? `\n    <div class="field-group"><img src="${field.imageUrl}" alt="photo" style="max-width:100%;border-radius:6px;border:1px solid #e2e8f0;" /></div>`
+            : '';
+        default:
+          return '';
+      }
+    };
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${formTitle || 'Form'}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+    .form-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 600px;
+    }
+    .form-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+    .form-desc {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 28px;
+    }
+    .field-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 5px;
+    }
+    .req { color: #ef4444; }
+    input[type=text], input[type=email], input[type=date], input[type=file], select, textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #111827;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.18s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+    .check-group label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .radio-opt {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 400;
+      margin-bottom: 5px;
+      cursor: pointer;
+    }
+    .textbox {
+      font-size: 14px;
+      color: #374151;
+      line-height: 1.7;
+      margin-bottom: 18px;
+    }
+    .form-submit {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 10px;
+    }
+    button[type=submit] {
+      padding: 10px 24px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.18s;
+    }
+    button[type=submit]:hover { background: #1d4ed8; }
+    button[type=reset] {
+      padding: 10px 24px;
+      background: #fff;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-card">
+    ${formTitle ? `<h1 class="form-title">${formTitle}</h1>` : ''}
+    ${formDescription ? `<p class="form-desc">${formDescription}</p>` : ''}
+    <form novalidate>
+      ${fields.map(renderFieldHtml).join('')}
+      <div class="form-submit">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>`;
+
+    this.setState({ htmlModal: html });
+  }
+
+  closeModal() {
+    this.setState({ jsonModal: null, htmlModal: null });
+  }
+
+  render() {
+    const {
+      formTitle, formDescription, formType,
+      fields, draggingCardId, canvasDragOver,
+      jsonModal, htmlModal,
+    } = this.state;
+
+    return (
+      <div className="fb-root">
+        {/* ── Top bar ── */}
+        <header className="fb-topbar">
+          <div className="fb-topbar-brand">
+            <div className="fb-topbar-brand-icon">⚡</div>
+            <span className="fb-topbar-brand-name">Form Builder</span>
+          </div>
+          <div className="fb-topbar-divider" />
+          <input
+            className="fb-topbar-input"
+            type="text"
+            placeholder="Form Title…"
+            value={formTitle}
+            onChange={(e) => this.setState({ formTitle: e.target.value })}
+          />
+          <input
+            className="fb-topbar-input"
+            type="text"
+            placeholder="Description (optional)…"
+            value={formDescription}
+            onChange={(e) => this.setState({ formDescription: e.target.value })}
+          />
+          <select
+            className="fb-topbar-select"
+            value={formType}
+            onChange={(e) => this.setState({ formType: e.target.value })}
+          >
+            <option value="contact">Contact Form</option>
+            <option value="survey">Survey</option>
+            <option value="registration">Registration</option>
+            <option value="feedback">Feedback</option>
+            <option value="order">Order Form</option>
+            <option value="application">Application</option>
+            <option value="other">Other</option>
+          </select>
+        </header>
+
+        {/* ── Main layout ── */}
+        <div className="fb-layout">
+          {/* ── Left Panel ── */}
+          <aside className="fb-panel">
+            <div className="fb-panel-header">
+              <div className="fb-panel-title">Field Types</div>
+              <div className="fb-panel-subtitle">Drag a field onto the canvas →</div>
+            </div>
+            <div className="fb-panel-list">
+              {FIELD_TYPES.map((ft) => (
+                <div
+                  key={ft.type}
+                  className={`fb-field-item ${this.state.draggingPanelType === ft.type ? 'dragging' : ''}`}
+                  draggable
+                  onDragStart={(e) => this.handlePanelDragStart(e, ft.type)}
+                  onDragEnd={this.handlePanelDragEnd}
+                >
+                  <span className="fb-field-icon">{ft.icon}</span>
+                  <span className="fb-field-label">{ft.label}</span>
+                  <span className="fb-field-drag-hint">drag</span>
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          {/* ── Right Canvas ── */}
+          <main className="fb-canvas">
+            <div className="fb-canvas-header">
+              <span className="fb-canvas-title">Canvas</span>
+              <span className="fb-canvas-count">
+                {fields.length} field{fields.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div className="fb-canvas-drop-zone">
+              <div
+                className={`fb-drop-area ${canvasDragOver ? 'drag-over' : ''}`}
+                onDragOver={this.handleCanvasDragOver}
+                onDragLeave={this.handleCanvasDragLeave}
+                onDrop={this.handleCanvasDrop}
+              >
+                {fields.length === 0 && (
+                  <div className="fb-canvas-empty">
+                    <div className="fb-canvas-empty-icon">📋</div>
+                    <div className="fb-canvas-empty-title">Drag a field here to start building</div>
+                    <div className="fb-canvas-empty-sub">Choose a field type from the left panel and drop it here</div>
+                  </div>
+                )}
+
+                {fields.map((field) => (
+                  <FieldCard
+                    key={field.id}
+                    field={field}
+                    isDragging={draggingCardId === field.id}
+                    onDragStart={this.handleCardDragStart}
+                    onDragEnd={this.handleCardDragEnd}
+                    onDrop={this.handleCardDrop}
+                    onUpdate={this.handleUpdateField}
+                    onDelete={this.handleDeleteField}
+                  />
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+
+        {/* ── Bottom bar ── */}
+        <footer className="fb-bottom-bar">
+          <span className="fb-field-count-info">
+            {fields.length === 0
+              ? 'No fields yet — drag some from the left panel'
+              : `${fields.length} field${fields.length !== 1 ? 's' : ''} in form`}
+          </span>
+          <button
+            type="button"
+            className="fb-btn fb-btn-secondary"
+            onClick={this.handleSaveJson}
+            disabled={fields.length === 0}
+          >
+            💾 Save as JSON
+          </button>
+          <button
+            type="button"
+            className="fb-btn fb-btn-primary"
+            onClick={this.handlePublishHtml}
+            disabled={fields.length === 0}
+          >
+            🌐 Publish as HTML
+          </button>
+        </footer>
+
+        {/* ── Modals ── */}
+        {jsonModal && <JsonModal json={jsonModal} onClose={this.closeModal} />}
+        {htmlModal && <HtmlModal html={htmlModal} onClose={this.closeModal} />}
+      </div>
+    );
+  }
+}
 
 export default App;

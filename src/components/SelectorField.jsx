@@ -1,152 +1,59 @@
-import { Component } from "react";
+import React from 'react';
 
 /**
- * SelectorField — Class-based React component
- *
- * Renders a labelled, styled <select> dropdown with a custom chevron icon.
+ * SelectorField — npm-react-form-builder
+ * A dropdown/select field (class component).
  *
  * Props:
- * ─────────────────────────────────────────────
- * @prop {string}   label         — Field label text displayed above the select
- * @prop {Array}    options        — Array of option objects: { label: string, value: string|number }
- *                                  OR plain strings for quick usage
- * @prop {string}   value         — Controlled value (optional)
- * @prop {Function} onChange      — Callback fired on selection change: (value: string, name: string) => void
- * @prop {string}   name          — Field name identifier passed back in onChange
- * @prop {boolean}  required      — Shows a red asterisk next to the label
- * @prop {boolean}  disabled      — Disables the select element
- * @prop {string}   placeholder   — Placeholder option text (shown when nothing is selected)
- * @prop {string}   hint          — Small helper text shown below the select
+ *   label   {string}          — field label
+ *   options {Array}           — array of strings or { value, label } objects
+ *   onChange {function}       — called with the selected value string
  */
-class SelectorField extends Component {
+class SelectorField extends React.Component {
   constructor(props) {
     super(props);
-
-    // Internal state for uncontrolled usage
     this.state = {
-      internalValue: props.value ?? "",
+      selected: '',
     };
-
     this.handleChange = this.handleChange.bind(this);
   }
 
-  /**
-   * Sync internal state when parent passes a new controlled value.
-   */
-  static getDerivedStateFromProps(nextProps, prevState) {
-    if (
-      nextProps.value !== undefined &&
-      nextProps.value !== prevState.internalValue
-    ) {
-      return { internalValue: nextProps.value };
+  handleChange(e) {
+    const val = e.target.value;
+    this.setState({ selected: val });
+    if (typeof this.props.onChange === 'function') {
+      this.props.onChange(val);
     }
-    return null;
   }
 
-  /**
-   * Normalises an option entry into a { label, value } shape regardless
-   * of whether the consumer passed plain strings or objects.
-   */
-  normaliseOption(option) {
-    if (typeof option === "string" || typeof option === "number") {
-      return { label: String(option), value: String(option) };
-    }
-    return {
-      label: String(option.label ?? option.value ?? ""),
-      value: String(option.value ?? option.label ?? ""),
-    };
-  }
-
-  /**
-   * Fires on every <select> change event.
-   */
-  handleChange(event) {
-    const newValue = event.target.value;
-    const { name = "", onChange } = this.props;
-
-    this.setState({ internalValue: newValue });
-
-    if (typeof onChange === "function") {
-      onChange(newValue, name);
-    }
+  normalizeOptions(options) {
+    if (!Array.isArray(options)) return [];
+    return options.map((opt) => {
+      if (typeof opt === 'string') return { value: opt, label: opt };
+      return { value: opt.value, label: opt.label || opt.value };
+    });
   }
 
   render() {
-    const {
-      label,
-      options = [],
-      name = "",
-      required = false,
-      disabled = false,
-      placeholder = "Select an option…",
-      hint,
-    } = this.props;
-
-    const { internalValue } = this.state;
+    const { label } = this.props;
+    const { selected } = this.state;
+    const options = this.normalizeOptions(this.props.options);
 
     return (
-      <div className="fb-field">
-        {/* ── Label ── */}
-        {label && (
-          <label className="fb-label" htmlFor={`fb-select-${name}`}>
-            {label}
-            {required && <span className="fb-required">*</span>}
-          </label>
-        )}
-
-        {/* ── Select Wrapper (contains custom chevron) ── */}
-        <div className="fb-select-wrapper">
-          <select
-            id={`fb-select-${name}`}
-            name={name}
-            className="fb-select"
-            value={internalValue}
-            onChange={this.handleChange}
-            disabled={disabled}
-            required={required}
-            aria-describedby={hint ? `fb-hint-${name}` : undefined}
-          >
-            {/* Placeholder / empty option */}
-            <option value="" disabled={required}>
-              {placeholder}
+      <div className="nrfb-field">
+        {label && <label className="nrfb-label">{label}</label>}
+        <select
+          className="nrfb-select"
+          value={selected}
+          onChange={this.handleChange}
+        >
+          <option value="">— Select —</option>
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
             </option>
-
-            {/* Render normalised options */}
-            {options.map((opt) => {
-              const { label: optLabel, value: optValue } =
-                this.normaliseOption(opt);
-              return (
-                <option key={optValue} value={optValue}>
-                  {optLabel}
-                </option>
-              );
-            })}
-          </select>
-
-          {/* Custom chevron icon (SVG, no external deps) */}
-          <svg
-            className="fb-select-chevron"
-            viewBox="0 0 20 20"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <path
-              d="M5 7.5L10 12.5L15 7.5"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-
-        {/* ── Hint text ── */}
-        {hint && (
-          <span id={`fb-hint-${name}`} className="fb-hint">
-            {hint}
-          </span>
-        )}
+          ))}
+        </select>
       </div>
     );
   }

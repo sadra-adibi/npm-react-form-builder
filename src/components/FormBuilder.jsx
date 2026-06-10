@@ -1,246 +1,255 @@
-import { Component } from "react";
-import InputField from "./InputField";
-import SelectorField from "./SelectorField";
-import ImageUploadField from "./ImageUploadField";
+import React from 'react';
+import InputField from './InputField';
+import SelectorField from './SelectorField';
+import ImageUploadField from './ImageUploadField';
 
 /**
- * FormBuilder — Class-based React component
- *
- * Renders a complete, self-contained form from a declarative `fields` config array.
- * Each field entry specifies its `type` and passes through any relevant props.
- *
- * Supported field types:
- *  • "input"    → <InputField>
- *  • "selector" → <SelectorField>
- *  • "image"    → <ImageUploadField>
+ * FormBuilder — npm-react-form-builder
+ * Renders a complete form from a fields config array.
+ * Manages its own state for all field values.
  *
  * Props:
- * ─────────────────────────────────────────────
- * @prop {Array}    fields        — Array of field config objects (see Field Schema below)
- * @prop {string}   title         — Optional form title shown in the header
- * @prop {string}   description   — Optional subtitle shown below the title
- * @prop {Function} onSubmit      — Called with the full form values object when the form is submitted
- * @prop {Function} onReset       — Called when the Reset button is clicked (after values are cleared)
- * @prop {string}   submitLabel   — Label for the submit button (default: "Submit")
- * @prop {string}   resetLabel    — Label for the reset button (default: "Reset")
- * @prop {boolean}  showReset     — Whether to show the Reset button (default: true)
+ *   fields   {Array}    — array of field config objects
+ *   onSubmit {function} — called with { fieldId: value, ... } map
+ *   onReset  {function} — called when form is reset
  *
- * Field Schema:
- * ─────────────────────────────────────────────
- * {
- *   type:        "input" | "selector" | "image",   // Required — determines which component renders
- *   name:        string,                            // Unique key used in the values object
- *   label:       string,                            // Label text
- *   placeholder: string,                            // (input) placeholder
- *   inputType:   string,                            // (input) HTML input type, e.g. "email", "number"
- *   options:     Array,                             // (selector) option list
- *   accept:      string[],                          // (image) accepted MIME types
- *   maxSizeMB:   number,                            // (image) max file size
- *   required:    boolean,
- *   disabled:    boolean,
- *   hint:        string,
- *   defaultValue: any,                              // Pre-populated default value
- * }
+ * Field config shape:
+ *   { type, label, placeholder, required, options, ... }
  */
-class FormBuilder extends Component {
+class FormBuilder extends React.Component {
   constructor(props) {
     super(props);
-
-    // Initialise form values from field defaultValues
     this.state = {
-      values: this.buildInitialValues(props.fields),
+      values: this.initValues(props.fields || []),
     };
-
-    this.handleFieldChange = this.handleFieldChange.bind(this);
-    this.handleSubmit      = this.handleSubmit.bind(this);
-    this.handleReset       = this.handleReset.bind(this);
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleReset = this.handleReset.bind(this);
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
-
-  /**
-   * Builds the initial `values` map from the fields array.
-   * Uses `defaultValue` if present, otherwise falls back to an empty string.
-   */
-  buildInitialValues(fields = []) {
-    return fields.reduce((acc, field) => {
-      if (field.name) {
-        acc[field.name] = field.defaultValue ?? "";
+  initValues(fields) {
+    const values = {};
+    fields.forEach((field, idx) => {
+      const key = field.id || `field_${idx}`;
+      switch (field.type) {
+        case 'checkbox':
+          values[key] = false;
+          break;
+        case 'multiselect':
+          values[key] = [];
+          break;
+        default:
+          values[key] = '';
       }
-      return acc;
-    }, {});
+    });
+    return values;
   }
 
-  // ── Event Handlers ───────────────────────────────────────────────────────
-
-  /**
-   * Generic onChange handler shared by all field types.
-   * @param {any}    value — the new field value (string | File | null)
-   * @param {string} name  — the field's `name` key
-   */
-  handleFieldChange(value, name) {
-    this.setState((prevState) => ({
-      values: {
-        ...prevState.values,
-        [name]: value,
-      },
+  handleChange(key, value) {
+    this.setState((prev) => ({
+      values: { ...prev.values, [key]: value },
     }));
   }
 
-  /**
-   * Called when the form's native submit event fires.
-   * Prevents the default page reload and passes the values map to the parent.
-   */
-  handleSubmit(event) {
-    event.preventDefault();
-    const { onSubmit } = this.props;
-
-    if (typeof onSubmit === "function") {
-      // Pass a shallow copy so the parent can't mutate our state
-      onSubmit({ ...this.state.values });
+  handleSubmit(e) {
+    e.preventDefault();
+    if (typeof this.props.onSubmit === 'function') {
+      this.props.onSubmit(this.state.values);
     }
   }
 
-  /**
-   * Resets all field values back to their defaults and notifies the parent.
-   */
   handleReset() {
-    const { fields = [], onReset } = this.props;
-    const freshValues = this.buildInitialValues(fields);
-    this.setState({ values: freshValues });
-
-    if (typeof onReset === "function") {
-      onReset();
+    const fields = this.props.fields || [];
+    this.setState({ values: this.initValues(fields) });
+    if (typeof this.props.onReset === 'function') {
+      this.props.onReset();
     }
   }
 
-  // ── Field Renderer ───────────────────────────────────────────────────────
+  renderField(field, idx) {
+    const key = field.id || `field_${idx}`;
+    const value = this.state.values[key];
 
-  /**
-   * Given a single field config object, renders the appropriate component.
-   * Unknown types render an error badge so developers can spot mistakes quickly.
-   */
-  renderField(field, index) {
-    const {
-      type,
-      name,
-      label,
-      placeholder,
-      inputType,
-      options,
-      accept,
-      maxSizeMB,
-      required,
-      disabled,
-      hint,
-    } = field;
-
-    const value = this.state.values[name];
-    const key = name || `fb-field-${index}`;
-
-    switch (type) {
-      case "input":
+    switch (field.type) {
+      case 'text':
+      case 'email':
         return (
           <InputField
             key={key}
-            name={name}
-            label={label}
-            placeholder={placeholder}
-            type={inputType || "text"}
-            value={value}
-            onChange={this.handleFieldChange}
-            required={required}
-            disabled={disabled}
-            hint={hint}
+            label={field.label}
+            placeholder={field.placeholder}
+            required={field.required}
+            onChange={(val) => this.handleChange(key, val)}
           />
         );
 
-      case "selector":
+      case 'dropdown':
         return (
           <SelectorField
             key={key}
-            name={name}
-            label={label}
-            options={options || []}
-            value={value}
-            onChange={this.handleFieldChange}
-            placeholder={placeholder}
-            required={required}
-            disabled={disabled}
-            hint={hint}
+            label={field.label}
+            options={field.options || []}
+            onChange={(val) => this.handleChange(key, val)}
           />
         );
 
-      case "image":
+      case 'image':
         return (
           <ImageUploadField
             key={key}
-            name={name}
-            label={label}
-            onChange={this.handleFieldChange}
-            accept={accept}
-            maxSizeMB={maxSizeMB}
-            required={required}
-            hint={hint}
+            label={field.label}
+            onChange={(file) => this.handleChange(key, file)}
           />
+        );
+
+      case 'checkbox':
+        return (
+          <div key={key} className="nrfb-field">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={value || false}
+                onChange={(e) => this.handleChange(key, e.target.checked)}
+                style={{ accentColor: '#2563eb', width: '15px', height: '15px' }}
+              />
+              <span className="nrfb-label" style={{ marginBottom: 0 }}>
+                {field.label}
+              </span>
+            </label>
+          </div>
+        );
+
+      case 'radio':
+        return (
+          <div key={key} className="nrfb-field">
+            {field.label && <label className="nrfb-label">{field.label}</label>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {(field.options || []).map((opt) => (
+                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+                  <input
+                    type="radio"
+                    name={key}
+                    value={opt}
+                    checked={value === opt}
+                    onChange={(e) => this.handleChange(key, e.target.value)}
+                    style={{ accentColor: '#2563eb' }}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'date':
+        return (
+          <div key={key} className="nrfb-field">
+            {field.label && (
+              <label className="nrfb-label">
+                {field.label}
+                {field.required && <span className="nrfb-required">*</span>}
+              </label>
+            )}
+            <input
+              type="date"
+              className="nrfb-input"
+              value={value || ''}
+              required={field.required}
+              onChange={(e) => this.handleChange(key, e.target.value)}
+            />
+          </div>
+        );
+
+      case 'file':
+        return (
+          <div key={key} className="nrfb-field">
+            {field.label && <label className="nrfb-label">{field.label}</label>}
+            <input
+              type="file"
+              accept={field.acceptedTypes || '*'}
+              className="nrfb-input"
+              style={{ padding: '4px 8px' }}
+              onChange={(e) => this.handleChange(key, e.target.files[0])}
+            />
+          </div>
+        );
+
+      case 'multiselect':
+        return (
+          <div key={key} className="nrfb-field">
+            {field.label && <label className="nrfb-label">{field.label}</label>}
+            <select
+              multiple
+              className="nrfb-select"
+              style={{ height: 'auto', minHeight: '80px' }}
+              value={value || []}
+              onChange={(e) => {
+                const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+                this.handleChange(key, selected);
+              }}
+            >
+              {(field.options || []).map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+        );
+
+      case 'separator':
+        return <hr key={key} style={{ border: 'none', borderTop: '2px solid #e5e7eb', margin: '8px 0' }} />;
+
+      case 'textbox':
+        return (
+          <div key={key} className="nrfb-field">
+            <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6' }}>
+              {field.content || field.label || ''}
+            </p>
+          </div>
+        );
+
+      case 'photobox':
+        return (
+          <div key={key} className="nrfb-field">
+            {field.imageUrl ? (
+              <img
+                src={field.imageUrl}
+                alt={field.label || 'image'}
+                style={{ width: '100%', borderRadius: '6px', border: '1px solid #e5e7eb' }}
+              />
+            ) : (
+              <div style={{ padding: '20px', border: '1px dashed #d1d5db', borderRadius: '6px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+                No image URL set
+              </div>
+            )}
+          </div>
         );
 
       default:
         return (
-          <div key={key} className="fb-unknown-field">
-            ⚠ Unknown field type: <strong>"{type}"</strong>. Supported types: input, selector, image.
+          <div key={key} className="nrfb-field">
+            <span style={{ color: '#9ca3af', fontSize: '12px' }}>Unknown field type: {field.type}</span>
           </div>
         );
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────
-
   render() {
-    const {
-      fields = [],
-      title,
-      description,
-      submitLabel = "Submit",
-      resetLabel = "Reset",
-      showReset = true,
-    } = this.props;
+    const fields = this.props.fields || [];
 
     return (
-      <form className="fb-form-builder" onSubmit={this.handleSubmit} noValidate>
-        {/* ── Optional Header ── */}
-        {(title || description) && (
-          <div className="fb-form-builder__header">
-            {title && (
-              <h2 className="fb-form-builder__title">{title}</h2>
-            )}
-            {description && (
-              <p className="fb-form-builder__description">{description}</p>
-            )}
-          </div>
-        )}
-
-        {/* ── Fields ── */}
-        <div className="fb-form-builder__body">
-          {fields.map((field, index) => this.renderField(field, index))}
-        </div>
-
-        {/* ── Footer with action buttons ── */}
-        <div className="fb-form-builder__footer">
-          {showReset && (
-            <button
-              type="button"
-              className="fb-btn fb-btn-secondary"
-              onClick={this.handleReset}
-            >
-              {resetLabel}
+      <div className="nrfb-form-builder">
+        <form onSubmit={this.handleSubmit} onReset={this.handleReset} noValidate>
+          {fields.map((field, idx) => this.renderField(field, idx))}
+          <div className="nrfb-form-actions">
+            <button type="submit" className="nrfb-btn nrfb-btn-submit">
+              Submit
             </button>
-          )}
-          <button type="submit" className="fb-btn fb-btn-primary">
-            {submitLabel}
-          </button>
-        </div>
-      </form>
+            <button type="button" className="nrfb-btn nrfb-btn-reset" onClick={this.handleReset}>
+              Reset
+            </button>
+          </div>
+        </form>
+      </div>
     );
   }
 }
