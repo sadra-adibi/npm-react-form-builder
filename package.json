@@ -1,21 +1,49 @@
 {
   "name": "npm-react-form-builder",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "A React form builder library with class-style components for inputs, selectors, and image uploads.",
+  "type": "module",
+  "main": "dist/npm-react-form-builder.umd.cjs",
+  "module": "dist/npm-react-form-builder.js",
+  "exports": {
+    ".": {
+      "import": "./dist/npm-react-form-builder.js",
+      "require": "./dist/npm-react-form-builder.umd.cjs"
+    },
+    "./style.css": "./dist/style.css"
   },
-  "keywords": [],
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "react",
+    "form",
+    "form-builder",
+    "input",
+    "selector",
+    "image-upload",
+    "components",
+    "library"
+  ],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.2",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "vite": "^8.0.16"
+    "@types/node": "22.19.17",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "typescript": "5.9.3",
+    "vite": "7.3.2"
   }
 }
-
-
