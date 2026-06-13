@@ -389,12 +389,16 @@ class FieldCard extends React.Component {
   handleDragOver(e) {
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
+    // Allow both move (for reorder) and copy (for new fields)
+    e.dataTransfer.dropEffect = e.dataTransfer.effectAllowed === 'copy' ? 'copy' : 'move';
     const rect = e.currentTarget.getBoundingClientRect();
     const mouseY = e.clientY;
-    const mid = rect.top + rect.height / 2;
+    const mid = rect.top + (rect.height / 2);
     const newPosition = mouseY < mid ? 'top' : 'bottom';
-    this.setState({ dragOverPos: newPosition });
+    
+    if (this.state.dragOverPos !== newPosition) {
+      this.setState({ dragOverPos: newPosition });
+    }
   }
 
   handleDragLeave() {
@@ -405,13 +409,22 @@ class FieldCard extends React.Component {
     e.preventDefault();
     e.stopPropagation();
     const pos = this.state.dragOverPos;
+    
     this.setState({ dragOverPos: null });
+    
     const raw = e.dataTransfer.getData('text/plain');
-    if (!raw) return;
+    
+    if (!raw) {
+      return;
+    }
+    
     try {
       const data = JSON.parse(raw);
+
       this.props.onDrop(data, this.props.field.id, pos);
-    } catch (_) {}
+    } catch (err) {
+
+    }
   }
 
   render() {
@@ -565,6 +578,8 @@ class App extends React.Component {
   handlePanelDragStart(e, type) {
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'panel', type }));
+    // Also set drop effect explicitly
+    e.dataTransfer.dropEffect = 'copy';
     this.setState({ draggingPanelType: type });
   }
 
@@ -589,15 +604,17 @@ class App extends React.Component {
   handleCanvasDrop(e) {
     e.preventDefault();
     this.setState({ canvasDragOver: false });
-    const raw = e.dataTransfer.getData('text/plain');
-    if (!raw) return;
-    try {
-      const data = JSON.parse(raw);
-      if (data.source === 'panel') {
-        this.setState((s) => ({ fields: [...s.fields, makeField(data.type)] }));
-      }
-      // canvas-to-canvas handled by card drop handlers
-    } catch (_) {}
+    // Only handle if dropping directly on canvas background, not on cards
+    if (e.target === e.currentTarget || e.target.classList.contains('fb-drop-area')) {
+      const raw = e.dataTransfer.getData('text/plain');
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.source === 'panel') {
+          this.setState((s) => ({ fields: [...s.fields, makeField(data.type)] }));
+        }
+      } catch (_) {}
+    }
   }
 
   // ── Card drag (reorder) ──
@@ -617,12 +634,13 @@ class App extends React.Component {
         const idx = s.fields.findIndex((f) => f.id === targetId);
         if (idx === -1) return { fields: [...s.fields, newField] };
         const list = [...s.fields];
+        // Insert at the correct position (top = before target, bottom = after target)
         const insertIndex = position === 'top' ? idx : idx + 1;
         list.splice(insertIndex, 0, newField);
         return { fields: list };
       });
     } else if (data.source === 'canvas' && data.id) {
-      // Reorder existing fields
+      // Reorder existing fields (keep this as is)
       const sourceId = data.id;
       if (sourceId === targetId) return;
       
@@ -633,23 +651,15 @@ class App extends React.Component {
         
         if (sourceIndex === -1 || targetIndex === -1) return {};
         
-        // Remove the source item
         const [movedField] = fields.splice(sourceIndex, 1);
-        
-        // Calculate new target index (adjust if source was before target)
         let newTargetIndex = targetIndex;
         if (sourceIndex < targetIndex) {
           newTargetIndex = targetIndex - 1;
         }
-        
-        // Adjust for position (top/bottom)
         if (position === 'bottom') {
           newTargetIndex = newTargetIndex + 1;
         }
-        
-        // Insert at the new position
         fields.splice(newTargetIndex, 0, movedField);
-        
         return { fields };
       });
     }
