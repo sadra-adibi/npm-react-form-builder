@@ -377,8 +377,9 @@ class FieldCard extends React.Component {
   handleDragStart(e) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'canvas', id: this.props.field.id }));
+    e.dataTransfer.effectAllowed = 'move';
     this.props.onDragStart(this.props.field.id);
-  }
+  } 
 
   handleDragEnd() {
     this.props.onDragEnd();
@@ -387,10 +388,13 @@ class FieldCard extends React.Component {
 
   handleDragOver(e) {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     const rect = e.currentTarget.getBoundingClientRect();
+    const mouseY = e.clientY;
     const mid = rect.top + rect.height / 2;
-    this.setState({ dragOverPos: e.clientY < mid ? 'top' : 'bottom' });
+    const newPosition = mouseY < mid ? 'top' : 'bottom';
+    this.setState({ dragOverPos: newPosition });
   }
 
   handleDragLeave() {
@@ -613,21 +617,40 @@ class App extends React.Component {
         const idx = s.fields.findIndex((f) => f.id === targetId);
         if (idx === -1) return { fields: [...s.fields, newField] };
         const list = [...s.fields];
-        list.splice(position === 'top' ? idx : idx + 1, 0, newField);
+        const insertIndex = position === 'top' ? idx : idx + 1;
+        list.splice(insertIndex, 0, newField);
         return { fields: list };
       });
-    } else if (data.source === 'canvas') {
-      // Reorder
+    } else if (data.source === 'canvas' && data.id) {
+      // Reorder existing fields
       const sourceId = data.id;
       if (sourceId === targetId) return;
+      
       this.setState((s) => {
-        const list = s.fields.filter((f) => f.id !== sourceId);
-        const moved = s.fields.find((f) => f.id === sourceId);
-        if (!moved) return {};
-        const targetIdx = list.findIndex((f) => f.id === targetId);
-        if (targetIdx === -1) return { fields: [...list, moved] };
-        list.splice(position === 'top' ? targetIdx : targetIdx + 1, 0, moved);
-        return { fields: list };
+        const fields = [...s.fields];
+        const sourceIndex = fields.findIndex((f) => f.id === sourceId);
+        const targetIndex = fields.findIndex((f) => f.id === targetId);
+        
+        if (sourceIndex === -1 || targetIndex === -1) return {};
+        
+        // Remove the source item
+        const [movedField] = fields.splice(sourceIndex, 1);
+        
+        // Calculate new target index (adjust if source was before target)
+        let newTargetIndex = targetIndex;
+        if (sourceIndex < targetIndex) {
+          newTargetIndex = targetIndex - 1;
+        }
+        
+        // Adjust for position (top/bottom)
+        if (position === 'bottom') {
+          newTargetIndex = newTargetIndex + 1;
+        }
+        
+        // Insert at the new position
+        fields.splice(newTargetIndex, 0, movedField);
+        
+        return { fields };
       });
     }
   }
