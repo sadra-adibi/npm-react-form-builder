@@ -782,7 +782,7 @@ class App extends React.Component {
       margin-bottom: 5px;
     }
     .req { color: #ef4444; }
-    input[type=text], input[type=email], input[type=date], input[type=file], select, textarea {
+    input[type=text], input[type=email], input[type=date], input[type=time], input[type=file], select, textarea {
       width: 100%;
       padding: 8px 12px;
       border: 1px solid #d1d5db;
