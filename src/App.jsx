@@ -525,49 +525,6 @@ class JsonModal extends React.Component {
   }
 }
 
-// ─── HTML Modal ───────────────────────────────────────────────────────────────
-class HtmlModal extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { copied: false };
-    this.handleCopy = this.handleCopy.bind(this);
-  }
-
-  handleCopy() {
-    navigator.clipboard.writeText(this.props.html).then(() => {
-      this.setState({ copied: true });
-      setTimeout(() => this.setState({ copied: false }), 2000);
-    });
-  }
-
-  render() {
-    const { html, onClose } = this.props;
-    const { copied } = this.state;
-    return (
-      <div className="fb-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="fb-modal">
-          <div className="fb-modal-header">
-            <div>
-              <div className="fb-modal-title">🌐 Published HTML</div>
-              <div className="fb-modal-subtitle">Embed this self-contained snippet in any website</div>
-            </div>
-            <button type="button" className="fb-icon-btn" onClick={onClose} title="Close">✕</button>
-          </div>
-          <div className="fb-modal-body">
-            <pre className="fb-code-block">{html}</pre>
-          </div>
-          <div className="fb-modal-footer">
-            {copied && <span className="fb-copy-success">✅ Copied!</span>}
-            <button type="button" className="fb-btn fb-btn-secondary" onClick={onClose}>Close</button>
-            <button type="button" className="fb-btn fb-btn-primary" onClick={this.handleCopy}>
-              📋 Copy to Clipboard
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-}
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 class App extends React.Component {
@@ -583,7 +540,6 @@ class App extends React.Component {
       draggingCardId: null,     // id being dragged from canvas
       canvasDragOver: false,
       jsonModal: null,
-      htmlModal: null,
     };
 
     this.handlePanelDragStart = this.handlePanelDragStart.bind(this);
@@ -907,18 +863,27 @@ class App extends React.Component {
 </body>
 </html>`;
 
-    this.setState({ htmlModal: html });
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = (formTitle || 'form').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'form';
+    a.download = `${safeName}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  
   }
-
   closeModal() {
-    this.setState({ jsonModal: null, htmlModal: null });
+    this.setState({ jsonModal: null });
   }
 
   render() {
     const {
       formTitle, formDescription, formType, formDirection,
       fields, draggingCardId, canvasDragOver,
-      jsonModal, htmlModal,
+      jsonModal,
     } = this.state;
 
     return (
@@ -1066,13 +1031,12 @@ class App extends React.Component {
             onClick={this.handlePublishHtml}
             disabled={fields.length === 0}
           >
-            🌐 Publish as HTML
+            ⬇️ Download HTML
           </button>
         </footer>
 
         {/* ── Modals ── */}
         {jsonModal && <JsonModal json={jsonModal} onClose={this.closeModal} />}
-        {htmlModal && <HtmlModal html={htmlModal} onClose={this.closeModal} />}
       </div>
     );
   }
