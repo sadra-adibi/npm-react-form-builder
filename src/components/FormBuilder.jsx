@@ -142,6 +142,25 @@ class FormBuilder extends React.Component {
           </div>
         );
 
+      case 'time':
+        return (
+          <div key={key} className="nrfb-field">
+            {field.label && (
+              <label className="nrfb-label">
+                {field.label}
+                {field.required && <span className="nrfb-required">*</span>}
+              </label>
+            )}
+            <input
+              type="time"
+              className="nrfb-input"
+              value={value || ''}
+              required={field.required}
+              onChange={(e) => this.handleChange(key, e.target.value)}
+            />
+          </div>
+        );
+
       case 'file':
         return (
           <div key={key} className="nrfb-field">

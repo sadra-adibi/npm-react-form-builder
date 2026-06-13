@@ -8,6 +8,7 @@ const FIELD_TYPES = [
   { type: 'checkbox',    label: 'Checkbox',          icon: '☑️' },
   { type: 'radio',       label: 'Radio Button',      icon: '🔘' },
   { type: 'date',        label: 'Date',              icon: '📅' },
+  { type: 'time',        label: 'Time',              icon: '⏰' },
   { type: 'email',       label: 'Email',             icon: '📧' },
   { type: 'file',        label: 'File Upload',       icon: '📎' },
   { type: 'multiselect', label: 'Multi Select',      icon: '📋' },
@@ -33,6 +34,8 @@ function makeField(type) {
       return { ...base, label: 'Choose one', options: ['Option A', 'Option B'] };
     case 'date':
       return { ...base, label: 'Select a date', required: false };
+    case 'time':
+      return { ...base, label: 'Select a time', required: false };
     case 'email':
       return { ...base, label: 'Email Address', placeholder: 'you@example.com', required: false };
     case 'file':
@@ -114,6 +117,16 @@ class FieldPreview extends React.Component {
               {field.required && <span className="fb-preview-required">*</span>}
             </label>
             <input className="fb-preview-input" type="date" readOnly />
+          </div>
+        );
+      case 'time':
+        return (
+          <div>
+            <label className="fb-preview-label">
+              {field.label || 'Time'}
+              {field.required && <span className="fb-preview-required">*</span>}
+            </label>
+            <input className="fb-preview-input" type="time" readOnly />
           </div>
         );
       case 'file':
@@ -278,7 +291,7 @@ class FieldEditor extends React.Component {
         )}
 
         {/* Required toggle */}
-        {(field.type === 'text' || field.type === 'email' || field.type === 'date') && (
+        {(field.type === 'text' || field.type === 'email' || field.type === 'date' || field.type === 'time') && (
           <div className="fb-form-group">
             <div className="fb-toggle-row">
               <label className="fb-toggle">
@@ -688,6 +701,12 @@ class App extends React.Component {
     <div class="field-group">
       <label>${field.label || 'Date'}${field.required ? ' <span class="req">*</span>' : ''}</label>
       <input type="date" ${field.required ? 'required' : ''} />
+    </div>`;
+        case 'time':
+          return `
+    <div class="field-group">
+      <label>${field.label || 'Time'}${field.required ? ' <span class="req">*</span>' : ''}</label>
+      <input type="time" ${field.required ? 'required' : ''} />
     </div>`;
         case 'file':
           return `
