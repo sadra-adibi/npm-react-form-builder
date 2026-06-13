@@ -577,6 +577,7 @@ class App extends React.Component {
       formTitle: '',
       formDescription: '',
       formType: 'contact',
+      formDirection: 'ltr',
       fields: [],
       draggingPanelType: null,  // type being dragged from panel
       draggingCardId: null,     // id being dragged from canvas
@@ -688,20 +689,22 @@ class App extends React.Component {
 
   // ── JSON export ──
   handleSaveJson() {
-    const { fields, formTitle, formDescription, formType } = this.state;
-    const output = fields.map(({ id, ...rest }) => rest); // omit internal id
-    const payload = {
-      title: formTitle,
-      description: formDescription,
-      formType,
-      fields: output,
-    };
-    this.setState({ jsonModal: JSON.stringify(payload, null, 2) });
+  const { fields, formTitle, formDescription, formType, formDirection } = this.state;
+  const output = fields.map(({ id, ...rest }) => rest); // omit internal id
+  const payload = {
+    title: formTitle,
+    description: formDescription,
+    formType,
+    direction: formDirection,
+    fields: output,
+  };
+  this.setState({ jsonModal: JSON.stringify(payload, null, 2) });
   }
 
   // ── HTML export ──
   handlePublishHtml() {
-    const { fields, formTitle, formDescription } = this.state;
+    const { fields, formTitle, formDescription, formDirection } = this.state;
+    const dir = formDirection === 'rtl' ? 'rtl' : 'ltr';
 
     const renderFieldHtml = (field) => {
       switch (field.type) {
@@ -771,7 +774,7 @@ class App extends React.Component {
     };
 
     const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="${dir}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -913,7 +916,7 @@ class App extends React.Component {
 
   render() {
     const {
-      formTitle, formDescription, formType,
+      formTitle, formDescription, formType, formDirection,
       fields, draggingCardId, canvasDragOver,
       jsonModal, htmlModal,
     } = this.state;
@@ -954,6 +957,25 @@ class App extends React.Component {
             <option value="application">Application</option>
             <option value="other">Other</option>
           </select>
+
+          <div className="fb-dir-toggle">
+            <button
+              type="button"
+              className={`fb-dir-btn ${formDirection === 'ltr' ? 'active' : ''}`}
+              onClick={() => this.setState({ formDirection: 'ltr' })}
+              title="Left to right"
+            >
+              LTR
+            </button>
+            <button
+              type="button"
+              className={`fb-dir-btn ${formDirection === 'rtl' ? 'active' : ''}`}
+              onClick={() => this.setState({ formDirection: 'rtl' })}
+              title="Right to left"
+            >
+              RTL
+            </button>
+          </div>
         </header>
 
         {/* ── Main layout ── */}
@@ -993,6 +1015,7 @@ class App extends React.Component {
             <div className="fb-canvas-drop-zone">
               <div
                 className={`fb-drop-area ${canvasDragOver ? 'drag-over' : ''}`}
+                dir={formDirection}
                 onDragOver={this.handleCanvasDragOver}
                 onDragLeave={this.handleCanvasDragLeave}
                 onDrop={this.handleCanvasDrop}
