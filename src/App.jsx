@@ -454,7 +454,7 @@ class FieldCard extends React.Component {
             onDragEnd={this.handleDragEnd}
             title="Drag to reorder"
           >
-            ⠿⠿
+            ⠿
           </span>
           <span className="fb-card-type-badge">{typeInfo.label || field.type}</span>
           <span className="fb-card-title">
