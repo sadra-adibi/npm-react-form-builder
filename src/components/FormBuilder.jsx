@@ -1,7 +1,6 @@
 import React from 'react';
 import InputField from './InputField';
 import SelectorField from './SelectorField';
-import ImageUploadField from './ImageUploadField';
 
 /**
  * FormBuilder — npm-react-form-builder
@@ -11,7 +10,6 @@ import ImageUploadField from './ImageUploadField';
  * Props:
  *   fields   {Array}    — array of field config objects
  *   onSubmit {function} — called with { fieldId: value, ... } map
- *   onReset  {function} — called when form is reset
  *
  * Field config shape:
  *   { type, label, placeholder, required, options, ... }
@@ -24,7 +22,6 @@ class FormBuilder extends React.Component {
     };
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleReset = this.handleReset.bind(this);
   }
 
   initValues(fields) {
@@ -58,13 +55,6 @@ class FormBuilder extends React.Component {
     }
   }
 
-  handleReset() {
-    const fields = this.props.fields || [];
-    this.setState({ values: this.initValues(fields) });
-    if (typeof this.props.onReset === 'function') {
-      this.props.onReset();
-    }
-  }
 
   renderField(field, idx) {
     const key = field.id || `field_${idx}`;
@@ -93,14 +83,6 @@ class FormBuilder extends React.Component {
           />
         );
 
-      case 'image':
-        return (
-          <ImageUploadField
-            key={key}
-            label={field.label}
-            onChange={(file) => this.handleChange(key, file)}
-          />
-        );
 
       case 'checkbox':
         return (
@@ -238,14 +220,11 @@ class FormBuilder extends React.Component {
 
     return (
       <div className="nrfb-form-builder">
-        <form onSubmit={this.handleSubmit} onReset={this.handleReset} noValidate>
+        <form onSubmit={this.handleSubmit} noValidate>
           {fields.map((field, idx) => this.renderField(field, idx))}
           <div className="nrfb-form-actions">
             <button type="submit" className="nrfb-btn nrfb-btn-submit">
               Submit
-            </button>
-            <button type="button" className="nrfb-btn nrfb-btn-reset" onClick={this.handleReset}>
-              Reset
             </button>
           </div>
         </form>

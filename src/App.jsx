@@ -5,7 +5,6 @@ import './styles/form-builder.css';
 const FIELD_TYPES = [
   { type: 'text',        label: 'Text Input',       icon: '✏️' },
   { type: 'dropdown',    label: 'Dropdown / Select', icon: '🔽' },
-  { type: 'image',       label: 'Image Upload',      icon: '🖼️' },
   { type: 'checkbox',    label: 'Checkbox',          icon: '☑️' },
   { type: 'radio',       label: 'Radio Button',      icon: '🔘' },
   { type: 'date',        label: 'Date',              icon: '📅' },
@@ -28,8 +27,6 @@ function makeField(type) {
       return { ...base, label: 'Text Input', placeholder: 'Enter text...', required: false };
     case 'dropdown':
       return { ...base, label: 'Dropdown', options: ['Option 1', 'Option 2', 'Option 3'] };
-    case 'image':
-      return { ...base, label: 'Image Upload' };
     case 'checkbox':
       return { ...base, label: 'Check this box' };
     case 'radio':
@@ -86,16 +83,6 @@ class FieldPreview extends React.Component {
               <option>— Select —</option>
               {(field.options || []).map((o, i) => <option key={i}>{o}</option>)}
             </select>
-          </div>
-        );
-      case 'image':
-        return (
-          <div>
-            <label className="fb-preview-label">{field.label || 'Image Upload'}</label>
-            <div className="fb-preview-upload">
-              <span>🖼️</span>
-              <span>Click or drag an image here</span>
-            </div>
           </div>
         );
       case 'checkbox':
@@ -835,17 +822,6 @@ class App extends React.Component {
       transition: background 0.18s;
     }
     button[type=submit]:hover { background: #1d4ed8; }
-    button[type=reset] {
-      padding: 10px 24px;
-      background: #fff;
-      color: #374151;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
   </style>
 </head>
 <body>
@@ -856,7 +832,6 @@ class App extends React.Component {
       ${fields.map(renderFieldHtml).join('')}
       <div class="form-submit">
         <button type="submit">Submit</button>
-        <button type="reset">Reset</button>
       </div>
     </form>
   </div>
